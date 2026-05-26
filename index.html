@@ -14,6 +14,28 @@
     padding: 40px 20px;
   }
 
+  /* ── 비밀번호 ── */
+  .pw-bar {
+    width: 100%; max-width: 900px; margin-bottom: 16px;
+    background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px;
+    padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+  }
+  .pw-label { font-size: 12px; color: #555; font-weight: 600; white-space: nowrap; }
+  .pw-input {
+    background: #0f1117; border: 1px solid #2a2d3a; border-radius: 8px;
+    padding: 8px 12px; color: #e8e8e8; font-size: 13px; outline: none;
+    flex: 1; max-width: 200px; transition: border-color 0.2s;
+  }
+  .pw-input:focus { border-color: #555; }
+  .pw-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid #2a2d3a;
+    background: #0f1117; color: #aaa; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .pw-btn:hover { border-color: #555; color: #fff; }
+  .pw-status { font-size: 12px; color: #555; }
+  .pw-status.connected { color: #4ade80; }
+
   /* ── 탭 ── */
   .tab-bar {
     display: flex; gap: 8px; margin-bottom: 24px;
@@ -173,7 +195,10 @@
   <div class="fav-section" id="skku-favSection">
     <div class="fav-header">
       <div class="fav-title">★ 즐겨찾기 <span class="fav-count" id="skku-favCount">0</span></div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input class="pw-input" type="password" id="skku-pwInput" placeholder="비밀번호" style="width:110px;">
+        <button class="pw-btn" onclick="saveFavToNotion('skku')">☁ 저장</button>
+        <button class="pw-btn" onclick="loadFavFromNotion('skku')">⬇ 불러오기</button>
         <button class="btn btn-ghost" id="skku-exportBtn" onclick="exportFav('skku')" style="display:none">📋 목록 복사</button>
         <button class="btn btn-ghost" id="skku-favClearBtn" onclick="clearFav('skku')" style="display:none">전체 해제</button>
       </div>
@@ -231,7 +256,10 @@
   <div class="fav-section" id="hyu-favSection">
     <div class="fav-header">
       <div class="fav-title">★ 즐겨찾기 <span class="fav-count" id="hyu-favCount">0</span></div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input class="pw-input" type="password" id="hyu-pwInput" placeholder="비밀번호" style="width:110px;">
+        <button class="pw-btn" onclick="saveFavToNotion('hyu')">☁ 저장</button>
+        <button class="pw-btn" onclick="loadFavFromNotion('hyu')">⬇ 불러오기</button>
         <button class="btn btn-ghost" id="hyu-exportBtn" onclick="exportFav('hyu')" style="display:none">📋 목록 복사</button>
         <button class="btn btn-ghost" id="hyu-favClearBtn" onclick="clearFav('hyu')" style="display:none">전체 해제</button>
       </div>
@@ -301,6 +329,41 @@ const state = {
   hyu:  { results: [], cancelled: false, favorites: loadFav('hyu')  },
 };
 const authorCache = {};
+
+// ── 노션 저장/불러오기 ───────────────────────────────
+async function saveFavToNotion(uni) {
+  const pw = document.getElementById(`${uni}-pwInput`).value.trim();
+  if (!pw) { showToast('⚠️ 비밀번호를 입력해주세요'); return; }
+  showToast('☁ 저장 중...');
+  try {
+    await fetch('/api/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, university: uni, favorites: state[uni].favorites })
+    });
+    showToast('✅ 서버에 저장됐어요!');
+  } catch(e) {
+    showToast('❌ 저장 실패');
+  }
+}
+
+async function loadFavFromNotion(uni) {
+  const pw = document.getElementById(`${uni}-pwInput`).value.trim();
+  if (!pw) { showToast('⚠️ 비밀번호를 입력해주세요'); return; }
+  showToast('⬇ 불러오는 중...');
+  try {
+    const res = await fetch(`/api/favorites?password=${encodeURIComponent(pw)}&university=${uni}`);
+    const data = await res.json();
+    if (!data.favorites || Object.keys(data.favorites).length === 0) {
+      showToast('📭 저장된 목록이 없어요'); return;
+    }
+    state[uni].favorites = data.favorites;
+    saveFav(uni); renderFav(uni); refreshStars(uni);
+    showToast(`✅ ${Object.keys(data.favorites).length}개 불러왔어요!`);
+  } catch(e) {
+    showToast('❌ 불러오기 실패');
+  }
+}
 
 // ── localStorage ──────────────────────────────────────
 function loadFav(uni) {
