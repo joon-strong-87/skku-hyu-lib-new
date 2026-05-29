@@ -444,7 +444,7 @@ function renderFav(uni) {
   wrap.className = 'fav-table-wrap'; wrap.id = `${uni}-favTable`;
   const table = document.createElement('table');
   const hyu_extra = uni === 'hyu' ? '<th>상세위치</th><th>서가번호</th>' : '<th>상세위치</th>';
-  table.innerHTML = `<thead><tr><th></th><th>등록번호</th><th>제목</th><th>저자</th><th>출판사</th><th>출판년도</th><th>청구기호</th><th>상태</th><th>위치</th>${hyu_extra}<th>입수일</th><th></th></tr></thead>`;
+  table.innerHTML = `<thead><tr><th></th><th>등록번호</th><th>제목</th><th>저자</th><th>출판사</th><th>출판년도</th><th>청구기호</th><th>주제</th><th>상태</th><th>위치</th>${hyu_extra}<th>입수일</th><th></th></tr></thead>`;
   const tbody = document.createElement('tbody');
   keys.forEach(reg => tbody.appendChild(makeRow(uni, favs[reg], true)));
   table.appendChild(tbody); wrap.appendChild(table);
@@ -469,11 +469,8 @@ function makeRow(uni, row, isFav) {
     <td>${row.author ? `<a href="https://search.kyobobook.co.kr/search?keyword=${encodeURIComponent(row.author)}" target="_blank" style="color:#ccc;text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;">${row.author}</a>` : ''}</td>
     <td>${row.publisher || ''}</td>
     <td>${row.year || ''}</td>
-    <td style="font-family:monospace;font-size:11px;white-space:nowrap">
-      ${row.callNumber
-        ? `<button onclick="askGemini('${row.callNumber.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}','${(row.title||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" style="font-family:monospace;font-size:11px;background:none;border:none;color:#4ade80;cursor:pointer;padding:0;text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;">${row.callNumber}</button>`
-        : ''}
-    </td>
+    <td style="font-family:monospace;font-size:11px;white-space:nowrap">${row.callNumber || ''}</td>
+    <td style="font-size:11px;color:#93c5fd;" id="subject-${row.reg}">${row.subject || '<span style="color:#333;font-size:10px;">분석 중...</span>'}</td>
     <td style="white-space:pre-line;font-size:11px">${combinedState}</td>
     <td>${locationAlias}</td>
     ${hyu_extra}
@@ -651,6 +648,10 @@ async function startFetch(uni) {
       if (state[uni].favorites[reg]) { state[uni].favorites[reg] = row; saveFav(uni); }
       addRow(uni, row, false);
       log(uni, `✓ ${reg}  ${row.title.slice(0, 40)}`, 'ok');
+      // 청구기호 있으면 백그라운드로 Gemini 주제 추출
+      if (row.callNumber && row.title && !row.title.startsWith('오류')) {
+        fetchSubject(uni, row);
+      }
     } catch(e) {
       const row = uni === 'skku'
         ? { reg, title:`오류: ${e.message}`, author:'', publisher:'', year:'', callNumber:'', status:'', location:'', detailLocation:'', dateReceived:'', pub:'', isbn:'', thumbnail:'' }
@@ -749,16 +750,16 @@ function downloadExcel(uni) {
   const favKeys = Object.keys(state[uni].favorites);
   const fileName = uni === 'skku' ? '성균관대_신착도서목록.xlsx' : '한양대_신착도서목록.xlsx';
   if (favKeys.length) {
-    const favData = [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','입수일']];
-    favKeys.forEach(reg => { const r = state[uni].favorites[reg]; favData.push([r.reg,r.title,r.author,r.publisher,r.year,r.callNumber,r.status,r.location,r.detailLocation||'',r.dateReceived]); });
+    const favData = [['등록번호','제목','저자','출판사','출판년도','청구기호','주제','상태','위치','상세위치','입수일']];
+    favKeys.forEach(reg => { const r = state[uni].favorites[reg]; favData.push([r.reg,r.title,r.author,r.publisher,r.year,r.callNumber,r.subject||'',r.status,r.location,r.detailLocation||'',r.dateReceived]); });
     const wsFav = XLSX.utils.aoa_to_sheet(favData);
-    wsFav['!cols'] = [{wch:14},{wch:50},{wch:18},{wch:20},{wch:10},{wch:18},{wch:10},{wch:16},{wch:18},{wch:14}];
+    wsFav['!cols'] = [{wch:14},{wch:50},{wch:18},{wch:20},{wch:10},{wch:18},{wch:30},{wch:10},{wch:16},{wch:18},{wch:14}];
     XLSX.utils.book_append_sheet(wb, wsFav, '★ 즐겨찾기');
   }
-  const wsData = [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','입수일']];
-  state[uni].results.forEach(r => wsData.push([r.reg,r.title,r.author,r.publisher,r.year,r.callNumber,r.status,r.location,r.detailLocation||'',r.dateReceived]));
+  const wsData = [['등록번호','제목','저자','출판사','출판년도','청구기호','주제','상태','위치','상세위치','입수일']];
+  state[uni].results.forEach(r => wsData.push([r.reg,r.title,r.author,r.publisher,r.year,r.callNumber,r.subject||'',r.status,r.location,r.detailLocation||'',r.dateReceived]));
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:14},{wch:50},{wch:18},{wch:20},{wch:10},{wch:18},{wch:10},{wch:16},{wch:18},{wch:14}];
+  ws['!cols'] = [{wch:14},{wch:50},{wch:18},{wch:20},{wch:10},{wch:18},{wch:30},{wch:10},{wch:16},{wch:18},{wch:14}];
   XLSX.utils.book_append_sheet(wb, ws, '신착도서목록');
   XLSX.writeFile(wb, fileName);
 }
@@ -772,8 +773,8 @@ async function downloadFavPDF(uni) {
   const fileName = uni === 'skku' ? '성균관대_즐겨찾기.pdf' : '한양대_즐겨찾기.pdf';
   const isHyu = uni === 'hyu';
   const headers = isHyu
-    ? [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','서가번호','입수일']]
-    : [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','입수일']];
+    ? [['등록번호','제목','저자','출판사','출판년도','청구기호','주제','상태','위치','상세위치','서가번호','입수일']]
+    : [['등록번호','제목','저자','출판사','출판년도','청구기호','주제','상태','위치','상세위치','입수일']];
 
   showToast('📄 즐겨찾기 PDF 생성 중...');
 
@@ -804,8 +805,8 @@ async function downloadFavPDF(uni) {
     theme: 'grid'
   };
   const makeRows = (list) => list.map(r => isHyu
-    ? [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.detailLocation||'', r.detailShelf||'', r.dateReceived]
-    : [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.detailLocation||'', r.dateReceived]
+    ? [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.subject||'', r.status, r.location, r.detailLocation||'', r.detailShelf||'', r.dateReceived]
+    : [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.subject||'', r.status, r.location, r.detailLocation||'', r.dateReceived]
   );
 
   doc.setFontSize(11);
@@ -824,8 +825,8 @@ async function downloadPDF(uni) {
   const fileName = uni === 'skku' ? '성균관대_신착도서목록.pdf' : '한양대_신착도서목록.pdf';
   const isHyu = uni === 'hyu';
   const headers = isHyu
-    ? [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','서가번호','입수일']]
-    : [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','입수일']];
+    ? [['등록번호','제목','저자','출판사','출판년도','청구기호','주제','상태','위치','상세위치','서가번호','입수일']]
+    : [['등록번호','제목','저자','출판사','출판년도','청구기호','주제','상태','위치','상세위치','입수일']];
 
   showToast('📄 PDF 생성 중... (폰트 로드 중)');
 
@@ -861,8 +862,8 @@ async function downloadPDF(uni) {
   };
 
   const makeRows = (list) => list.map(r => isHyu
-    ? [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.detailLocation||'', r.detailShelf||'', r.dateReceived]
-    : [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.detailLocation||'', r.dateReceived]
+    ? [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.subject||'', r.status, r.location, r.detailLocation||'', r.detailShelf||'', r.dateReceived]
+    : [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.subject||'', r.status, r.location, r.detailLocation||'', r.dateReceived]
   );
 
   // 전체 목록만
@@ -886,44 +887,33 @@ function showToast(msg, duration=2800) {
   setTimeout(() => { if (el.parentNode) el.remove(); }, duration);
 }
 
-// ── Gemini 호출 ───────────────────────────────────────
-async function askGemini(callNumber, title) {
-  showCallNumPopup(callNumber, title, null);
+// ── Gemini 주제 자동 추출 ─────────────────────────────
+async function fetchSubject(uni, row) {
   try {
     const res = await fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ callNumber, title })
+      body: JSON.stringify({ callNumber: row.callNumber, title: row.title })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    showCallNumPopup(callNumber, title, data.result);
-  } catch(e) {
-    showCallNumPopup(callNumber, title, '❌ 오류: ' + e.message);
-  }
-}
+    const subject = data.result || '';
 
-// ── 청구기호 팝업 ─────────────────────────────────────
-function showCallNumPopup(callNumber, title, content) {
-  document.getElementById('callnum-popup')?.remove();
-  const overlay = document.createElement('div');
-  overlay.id = 'callnum-popup';
-  overlay.style.cssText = 'position:fixed;inset:0;background:#0008;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
-  overlay.innerHTML = `
-    <div style="background:#1a1d27;border:1px solid #2a2d3a;border-radius:16px;padding:28px 32px;max-width:480px;width:100%;position:relative;">
-      <button onclick="document.getElementById('callnum-popup').remove()"
-        style="position:absolute;top:14px;right:16px;background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1;">✕</button>
-      <div style="font-size:11px;color:#555;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">청구기호 분석</div>
-      <div style="font-family:monospace;font-size:18px;color:#4ade80;font-weight:700;margin-bottom:6px;">${callNumber}</div>
-      <div style="font-size:12px;color:#555;margin-bottom:24px;line-height:1.5;">${title}</div>
-      <div style="font-size:15px;color:#e8e8e8;line-height:1.9;min-height:28px;">
-        ${content === null
-          ? '<span style="color:#444;font-size:13px;">Gemini에게 물어보는 중... ⏳</span>'
-          : `<span style="color:#60a5fa;">📖</span> ${content}`}
-      </div>
-    </div>`;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
+    // row 객체에 저장
+    row.subject = subject;
+    if (state[uni].favorites[row.reg]) {
+      state[uni].favorites[row.reg].subject = subject;
+      saveFav(uni);
+    }
+
+    // 테이블 셀 즉시 업데이트
+    const cell = document.getElementById(`subject-${row.reg}`);
+    if (cell) cell.textContent = subject;
+
+  } catch(e) {
+    const cell = document.getElementById(`subject-${row.reg}`);
+    if (cell) { cell.textContent = '—'; cell.style.color = '#444'; }
+  }
 }
 
 // ── 초기화 ────────────────────────────────────────────
