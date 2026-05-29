@@ -798,8 +798,8 @@ async function downloadFavPDF(uni) {
   } catch(e) { console.warn('폰트 로드 실패:', e); }
 
   const tableStyle = {
-    styles: { font: fontLoaded ? 'NotoSansKR' : 'helvetica', fontSize: 7, cellPadding: 2, overflow: 'linebreak' },
-    headStyles: { fillColor: [201, 161, 44], textColor: 255, fontStyle: 'normal' },
+    styles: { font: fontLoaded ? 'NotoSansKR' : 'helvetica', fontSize: 8, cellPadding: 2.5, overflow: 'linebreak', textColor: [20, 20, 20], fontStyle: 'bold' },
+    headStyles: { fillColor: [201, 161, 44], textColor: 255, fontStyle: 'bold', fontSize: 8 },
     columnStyles: { 1: { cellWidth: 60 } },
     margin: { left: 8, right: 8 },
     theme: 'grid'
@@ -853,9 +853,9 @@ async function downloadPDF(uni) {
   const tableStyle = {
     styles: {
       font: fontLoaded ? 'NotoSansKR' : 'helvetica',
-      fontSize: 7, cellPadding: 2, overflow: 'linebreak'
+      fontSize: 8, cellPadding: 2.5, overflow: 'linebreak', textColor: [20, 20, 20], fontStyle: 'bold'
     },
-    headStyles: { fillColor: uni === 'skku' ? [0,92,53] : [0,56,118], textColor: 255, fontStyle: 'normal' },
+    headStyles: { fillColor: uni === 'skku' ? [0,92,53] : [0,56,118], textColor: 255, fontStyle: 'bold', fontSize: 8 },
     columnStyles: { 1: { cellWidth: 60 } },
     margin: { left: 8, right: 8 },
     theme: 'grid'
