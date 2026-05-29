@@ -9,11 +9,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { height: auto; }
   body {
     font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
     background: #0f1117; color: #e8e8e8;
     min-height: 100vh; display: flex; flex-direction: column; align-items: center;
     padding: 40px 20px;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
 
   /* ── 비밀번호 ── */
@@ -162,6 +164,89 @@
   .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #23263a; color: #e8e8e8; padding: 12px 24px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 24px #0008; z-index: 999; animation: fadeInUp 0.25s ease; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
   @keyframes fadeInUp { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
   @keyframes popIn { from { opacity:0; transform: scale(0.95) translateY(8px); } to { opacity:1; transform: scale(1) translateY(0); } }
+
+  /* ══════════════════════════════════════════
+     모바일 반응형 (≤ 600px)
+  ══════════════════════════════════════════ */
+  @media (max-width: 600px) {
+    body { padding: 16px 12px; }
+
+    /* 탭 */
+    .tab-bar { gap: 6px; }
+    .tab-btn { flex: 1; justify-content: center; padding: 10px 8px; font-size: 13px; gap: 6px; }
+
+    /* 카드 */
+    .card { padding: 20px 16px; border-radius: 12px; }
+    h1 { font-size: 17px; gap: 8px; }
+    h1 svg { width: 28px; height: 28px; }
+    .subtitle { font-size: 12px; }
+
+    /* 입력 행 */
+    .row { flex-direction: column; gap: 10px; }
+
+    /* 버튼 영역 */
+    .actions { gap: 8px; }
+    .btn { padding: 11px 16px; font-size: 13px; }
+
+    /* 퀵셋 */
+    .qs-btns { gap: 6px; }
+    .qs-btn { padding: 7px 10px; font-size: 11px; }
+
+    /* 즐겨찾기 헤더 */
+    .fav-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .fav-title { font-size: 14px; }
+
+    /* 테이블: 가로 스크롤 허용 */
+    .results-table-wrap,
+    .fav-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* 테이블 기본 크기 조정 */
+    table { font-size: 11px; }
+    th, td { padding: 7px 8px; }
+    td.title { min-width: 120px; max-width: 180px; word-break: break-word; }
+    td.reg { font-size: 10px; }
+
+    /* SKKU 숨길 컬럼: 출판사(5), 출판년도(6), 입수일(10), 썸네일(11) */
+    .tab-skku .results-table-wrap th:nth-child(5),
+    .tab-skku .results-table-wrap td:nth-child(5),
+    .tab-skku .results-table-wrap th:nth-child(6),
+    .tab-skku .results-table-wrap td:nth-child(6),
+    .tab-skku .results-table-wrap th:nth-child(10),
+    .tab-skku .results-table-wrap td:nth-child(10),
+    .tab-skku .results-table-wrap th:nth-child(11),
+    .tab-skku .results-table-wrap td:nth-child(11) { display: none; }
+
+    /* HYU 숨길 컬럼: 출판사(5), 출판년도(6), 상세위치(10), 서가번호(11), 입수일(12), 썸네일(13) */
+    .tab-hyu .results-table-wrap th:nth-child(5),
+    .tab-hyu .results-table-wrap td:nth-child(5),
+    .tab-hyu .results-table-wrap th:nth-child(6),
+    .tab-hyu .results-table-wrap td:nth-child(6),
+    .tab-hyu .results-table-wrap th:nth-child(10),
+    .tab-hyu .results-table-wrap td:nth-child(10),
+    .tab-hyu .results-table-wrap th:nth-child(11),
+    .tab-hyu .results-table-wrap td:nth-child(11),
+    .tab-hyu .results-table-wrap th:nth-child(12),
+    .tab-hyu .results-table-wrap td:nth-child(12),
+    .tab-hyu .results-table-wrap th:nth-child(13),
+    .tab-hyu .results-table-wrap td:nth-child(13) { display: none; }
+
+    /* 즐겨찾기 테이블 숨김: 출판사(5), 출판년도(6), 썸네일(마지막) */
+    .fav-table-wrap th:nth-child(5),
+    .fav-table-wrap td:nth-child(5),
+    .fav-table-wrap th:nth-child(6),
+    .fav-table-wrap td:nth-child(6),
+    .fav-table-wrap th:last-child,
+    .fav-table-wrap td:last-child { display: none; }
+
+    /* 로그 높이 줄이기 */
+    .log { height: 100px; font-size: 11px; }
+
+    /* 토스트 */
+    .toast { font-size: 12px; padding: 10px 16px; white-space: normal; max-width: 88vw; text-align: center; }
+
+    /* 요약 */
+    .summary { font-size: 12px; padding: 10px 14px; }
+  }
 </style>
 </head>
 <body>
