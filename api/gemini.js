@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 규칙: 반드시 "~을/를 다루는 책입니다."로 끝낼 것. 한 문장만 출력. 설명 금지.`;
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
