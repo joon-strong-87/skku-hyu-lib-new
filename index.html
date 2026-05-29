@@ -206,15 +206,15 @@
     td.title { min-width: 120px; max-width: 180px; word-break: break-word; }
     td.reg { font-size: 10px; }
 
-    /* SKKU 숨길 컬럼: 출판사(5), 출판년도(6), 입수일(10), 썸네일(11) */
+    /* SKKU 숨길 컬럼: 출판사(5), 출판년도(6), 입수일(11), 썸네일(12) */
     .tab-skku .results-table-wrap th:nth-child(5),
     .tab-skku .results-table-wrap td:nth-child(5),
     .tab-skku .results-table-wrap th:nth-child(6),
     .tab-skku .results-table-wrap td:nth-child(6),
-    .tab-skku .results-table-wrap th:nth-child(10),
-    .tab-skku .results-table-wrap td:nth-child(10),
     .tab-skku .results-table-wrap th:nth-child(11),
-    .tab-skku .results-table-wrap td:nth-child(11) { display: none; }
+    .tab-skku .results-table-wrap td:nth-child(11),
+    .tab-skku .results-table-wrap th:nth-child(12),
+    .tab-skku .results-table-wrap td:nth-child(12) { display: none; }
 
     /* HYU 숨길 컬럼: 출판사(5), 출판년도(6), 상세위치(10), 서가번호(11), 입수일(12), 썸네일(13) */
     .tab-hyu .results-table-wrap th:nth-child(5),
@@ -320,7 +320,7 @@
     <div class="results-table-wrap" id="skku-tableWrap">
       <div class="summary" id="skku-summary"></div>
       <div class="section-label">수집 결과</div>
-      <table><thead><tr><th></th><th>등록번호</th><th>제목</th><th>저자</th><th>출판사</th><th>출판년도</th><th>청구기호</th><th>상태</th><th>위치</th><th>입수일</th><th></th></tr></thead><tbody id="skku-tbody"></tbody></table>
+      <table><thead><tr><th></th><th>등록번호</th><th>제목</th><th>저자</th><th>출판사</th><th>출판년도</th><th>청구기호</th><th>상태</th><th>위치</th><th>상세위치</th><th>입수일</th><th></th></tr></thead><tbody id="skku-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -443,7 +443,7 @@ function renderFav(uni) {
   const wrap = document.createElement('div');
   wrap.className = 'fav-table-wrap'; wrap.id = `${uni}-favTable`;
   const table = document.createElement('table');
-  const hyu_extra = uni === 'hyu' ? '<th>상세위치</th><th>서가번호</th>' : '';
+  const hyu_extra = uni === 'hyu' ? '<th>상세위치</th><th>서가번호</th>' : '<th>상세위치</th>';
   table.innerHTML = `<thead><tr><th></th><th>등록번호</th><th>제목</th><th>저자</th><th>출판사</th><th>출판년도</th><th>청구기호</th><th>상태</th><th>위치</th>${hyu_extra}<th>입수일</th><th></th></tr></thead>`;
   const tbody = document.createElement('tbody');
   keys.forEach(reg => tbody.appendChild(makeRow(uni, favs[reg], true)));
@@ -459,7 +459,7 @@ function makeRow(uni, row, isFav) {
     : (row.status || '');
   const hyu_extra = uni === 'hyu'
     ? `<td>${row.detailLocation || ''}</td><td style="font-family:monospace;font-size:11px">${row.detailShelf || ''}</td>`
-    : '';
+    : `<td>${row.detailLocation || ''}</td>`;
   tr.innerHTML = `
     <td style="text-align:center;width:32px">
       <button class="star-btn ${isFav ? 'active' : ''}" onclick="toggleFav('${uni}','${row.reg}')">${isFav ? '★' : '☆'}</button>
@@ -609,12 +609,19 @@ async function startFetch(uni) {
         const matched = data.success && data.data.totalCount > 0
           && (data.data.list || []).some(item =>
               (item.branchVolumes || []).some(bv => bv.volume && bv.volume.trim()) || item.dateReceived);
-        if (!matched) { stoppedAt = reg; log(uni, `⛔ ${reg}  — 미등록`, 'err'); addRow(uni, { reg, title:'(미등록)', author:'', publisher:'', year:'', callNumber:'', status:'', location:'', dateReceived:'', pub:'', isbn:'', thumbnail:'' }, true); break; }
+        if (!matched) { stoppedAt = reg; log(uni, `⛔ ${reg}  — 미등록`, 'err'); addRow(uni, { reg, title:'(미등록)', author:'', publisher:'', year:'', callNumber:'', status:'', location:'', detailLocation:'', dateReceived:'', pub:'', isbn:'', thumbnail:'' }, true); break; }
         const item = data.data.list[0];
         const { publisher, year } = parsePublication(item.publication || '');
         const targetBranchId = SKKU_BRANCH[startReg.prefix];
         const bv = (item.branchVolumes || []).find(b => b.id === targetBranchId) || (item.branchVolumes || [])[0] || {};
-        row = { reg, title: item.titleStatement || '', author: item.author || '', publisher, year, callNumber: bv.volume || '', status: bv.cState || '', location: bv.name || '', dateReceived: item.dateReceived || '', pub: item.publication || '', isbn: item.isbn || '', thumbnail: item.thumbnailUrl || '' };
+        let detailLocation = '';
+        try {
+          const dr = await fetch(`https://lib.skku.edu/pyxis-api/1/biblios/${item.id}/items?branchId=${bv.id}`);
+          const dd = await dr.json();
+          const di = dd.data?.list?.[0];
+          if (di) { detailLocation = di.location?.name || ''; }
+        } catch(e) {}
+        row = { reg, title: item.titleStatement || '', author: item.author || '', publisher, year, callNumber: bv.volume || '', status: bv.cState || '', location: bv.name || '', detailLocation, dateReceived: item.dateReceived || '', pub: item.publication || '', isbn: item.isbn || '', thumbnail: item.thumbnailUrl || '' };
       } else {
         const collectionId = HYU_COLLECTION[startReg.prefix] || 15;
         const data = await fetchHyu(reg, collectionId);
@@ -641,7 +648,9 @@ async function startFetch(uni) {
       addRow(uni, row, false);
       log(uni, `✓ ${reg}  ${row.title.slice(0, 40)}`, 'ok');
     } catch(e) {
-      const row = { reg, title:`오류: ${e.message}`, author:'', publisher:'', year:'', callNumber:'', status:'', location:'', detailLocation:'', detailShelf:'', detailState:'', dateReceived:'', pub:'', isbn:'', thumbnail:'' };
+      const row = uni === 'skku'
+        ? { reg, title:`오류: ${e.message}`, author:'', publisher:'', year:'', callNumber:'', status:'', location:'', detailLocation:'', dateReceived:'', pub:'', isbn:'', thumbnail:'' }
+        : { reg, title:`오류: ${e.message}`, author:'', publisher:'', year:'', callNumber:'', status:'', location:'', detailLocation:'', detailShelf:'', detailState:'', dateReceived:'', pub:'', isbn:'', thumbnail:'' };
       state[uni].results.push(row); addRow(uni, row, false);
       log(uni, `✗ ${reg}  ${e.message}`, 'err');
     }
@@ -736,16 +745,16 @@ function downloadExcel(uni) {
   const favKeys = Object.keys(state[uni].favorites);
   const fileName = uni === 'skku' ? '성균관대_신착도서목록.xlsx' : '한양대_신착도서목록.xlsx';
   if (favKeys.length) {
-    const favData = [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','입수일']];
-    favKeys.forEach(reg => { const r = state[uni].favorites[reg]; favData.push([r.reg,r.title,r.author,r.publisher,r.year,r.callNumber,r.status,r.location,r.dateReceived]); });
+    const favData = [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','입수일']];
+    favKeys.forEach(reg => { const r = state[uni].favorites[reg]; favData.push([r.reg,r.title,r.author,r.publisher,r.year,r.callNumber,r.status,r.location,r.detailLocation||'',r.dateReceived]); });
     const wsFav = XLSX.utils.aoa_to_sheet(favData);
-    wsFav['!cols'] = [{wch:14},{wch:50},{wch:18},{wch:20},{wch:10},{wch:18},{wch:10},{wch:16},{wch:14}];
+    wsFav['!cols'] = [{wch:14},{wch:50},{wch:18},{wch:20},{wch:10},{wch:18},{wch:10},{wch:16},{wch:18},{wch:14}];
     XLSX.utils.book_append_sheet(wb, wsFav, '★ 즐겨찾기');
   }
-  const wsData = [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','입수일']];
-  state[uni].results.forEach(r => wsData.push([r.reg,r.title,r.author,r.publisher,r.year,r.callNumber,r.status,r.location,r.dateReceived]));
+  const wsData = [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','입수일']];
+  state[uni].results.forEach(r => wsData.push([r.reg,r.title,r.author,r.publisher,r.year,r.callNumber,r.status,r.location,r.detailLocation||'',r.dateReceived]));
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:14},{wch:50},{wch:18},{wch:20},{wch:10},{wch:18},{wch:10},{wch:16},{wch:14}];
+  ws['!cols'] = [{wch:14},{wch:50},{wch:18},{wch:20},{wch:10},{wch:18},{wch:10},{wch:16},{wch:18},{wch:14}];
   XLSX.utils.book_append_sheet(wb, ws, '신착도서목록');
   XLSX.writeFile(wb, fileName);
 }
@@ -759,8 +768,8 @@ async function downloadFavPDF(uni) {
   const fileName = uni === 'skku' ? '성균관대_즐겨찾기.pdf' : '한양대_즐겨찾기.pdf';
   const isHyu = uni === 'hyu';
   const headers = isHyu
-    ? [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','입수일']]
-    : [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','입수일']];
+    ? [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','서가번호','입수일']]
+    : [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','입수일']];
 
   showToast('📄 즐겨찾기 PDF 생성 중...');
 
@@ -791,8 +800,8 @@ async function downloadFavPDF(uni) {
     theme: 'grid'
   };
   const makeRows = (list) => list.map(r => isHyu
-    ? [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.detailLocation||'', r.dateReceived]
-    : [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.dateReceived]
+    ? [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.detailLocation||'', r.detailShelf||'', r.dateReceived]
+    : [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.detailLocation||'', r.dateReceived]
   );
 
   doc.setFontSize(11);
@@ -811,8 +820,8 @@ async function downloadPDF(uni) {
   const fileName = uni === 'skku' ? '성균관대_신착도서목록.pdf' : '한양대_신착도서목록.pdf';
   const isHyu = uni === 'hyu';
   const headers = isHyu
-    ? [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','입수일']]
-    : [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','입수일']];
+    ? [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','서가번호','입수일']]
+    : [['등록번호','제목','저자','출판사','출판년도','청구기호','상태','위치','상세위치','입수일']];
 
   showToast('📄 PDF 생성 중... (폰트 로드 중)');
 
@@ -848,8 +857,8 @@ async function downloadPDF(uni) {
   };
 
   const makeRows = (list) => list.map(r => isHyu
-    ? [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.detailLocation||'', r.dateReceived]
-    : [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.dateReceived]
+    ? [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.detailLocation||'', r.detailShelf||'', r.dateReceived]
+    : [r.reg, r.title, r.author, r.publisher, r.year, r.callNumber, r.status, r.location, r.detailLocation||'', r.dateReceived]
   );
 
   // 전체 목록만
