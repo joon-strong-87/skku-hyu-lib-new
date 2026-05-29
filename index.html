@@ -469,7 +469,12 @@ function makeRow(uni, row, isFav) {
     <td>${row.author ? `<a href="https://search.kyobobook.co.kr/search?keyword=${encodeURIComponent(row.author)}" target="_blank" style="color:#ccc;text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;">${row.author}</a>` : ''}</td>
     <td>${row.publisher || ''}</td>
     <td>${row.year || ''}</td>
-    <td style="font-family:monospace;font-size:11px;white-space:nowrap">${row.callNumber || ''}</td>
+    <td style="font-family:monospace;font-size:11px;white-space:nowrap">
+  ${row.callNumber
+    ? `<button onclick="askMakeGemini('${row.callNumber.replace(/'/g,"\\'")}','${(row.title||'').replace(/'/g,"\\'")}')
+       " style="font-family:monospace;font-size:11px;background:none;border:none;color:#4ade80;cursor:pointer;padding:0;text-decoration:underline;text-decoration-style:dashed;">${row.callNumber}</button>`
+    : ''}
+</td>
     <td style="white-space:pre-line;font-size:11px">${combinedState}</td>
     <td>${locationAlias}</td>
     ${hyu_extra}
@@ -886,6 +891,44 @@ function showToast(msg, duration=2800) {
 renderFav('skku');
 renderFav('hyu');
 buildQuickset();
+
+
+
+ async function askMakeGemini(callNumber, title) {
+  showCallNumPopup(callNumber, title, null);
+  try {
+    const res = await fetch('https://hook.eu2.make.com/11oo1293ntqy9nvbcinhrnkz6p1ybftd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callNumber, title })
+    });
+    const text = await res.text();
+    showCallNumPopup(callNumber, title, text.trim());
+  } catch(e) {
+    showCallNumPopup(callNumber, title, '❌ 오류: ' + e.message);
+  }
+}
+
+function showCallNumPopup(callNumber, title, content) {
+  document.getElementById('callnum-popup')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'callnum-popup';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#0008;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:#1a1d27;border:1px solid #2a2d3a;border-radius:16px;padding:28px;max-width:480px;width:100%;position:relative;">
+      <button onclick="document.getElementById('callnum-popup').remove()"
+        style="position:absolute;top:16px;right:16px;background:none;border:none;color:#666;font-size:20px;cursor:pointer;">✕</button>
+      <div style="font-family:monospace;font-size:16px;color:#4ade80;font-weight:700;margin-bottom:6px;">${callNumber}</div>
+      <div style="font-size:12px;color:#666;margin-bottom:20px;">${title}</div>
+      <div style="font-size:14px;color:#ccc;line-height:1.8;">
+        ${content === null
+          ? '<span style="color:#555">Gemini에게 물어보는 중... ⏳</span>'
+          : content}
+      </div>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
 </script>
 </body>
 </html>
