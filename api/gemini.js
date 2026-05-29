@@ -8,9 +8,8 @@ export default async function handler(req, res) {
   const { callNumber, title } = req.body;
   const apiKey = process.env.GEMINI_API_KEY;
 
-  const prompt = `아래 도서관 청구기호와 책 제목을 보고, 이 책의 주제를 "~을/를 다루는 책입니다." 형식의 한 문장으로만 답해줘.
+  const prompt = `아래 도서관 청구기호를 보고, 이 책의 주제를 "~을/를 다루는 책입니다." 형식의 한 문장으로만 답해줘.
 청구기호: ${callNumber}
-책 제목: ${title || ''}
 규칙: 반드시 "~을/를 다루는 책입니다."로 끝낼 것. 한 문장만 출력. 설명 금지.`;
 
   const response = await fetch(
