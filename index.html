@@ -945,9 +945,10 @@ async function fetchSubject(uni, row) {
         location: row.location || '',
         status: row.status || '',
         dateReceived: row.dateReceived || '',
+        isbn: row.isbn || '',
         uni: uni,
         savedAt: new Date().toISOString()
-      });
+      }, { merge: true });
     }
 
   } catch(e) {
