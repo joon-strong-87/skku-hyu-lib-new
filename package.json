@@ -1,5 +1,8 @@
 {
   "dependencies": {
     "firebase": "^10.12.0"
+  },
+  "scripts": {
+    "build": "echo 'no build'"
   }
 }
